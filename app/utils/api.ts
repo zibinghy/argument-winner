@@ -1,12 +1,19 @@
 import OpenAI from 'openai';
 
-const API_KEY = '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';
-const BASE_URL = 'https://openrouter.ai/api/v1';
-const MODEL = 'deepseek/deepseek-chat';
+// 从环境变量获取API密钥，如果不存在则使用默认值
+const API_KEY = process.env.OPENROUTER_API_KEY || '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';
+const BASE_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+const MODEL = process.env.OPENROUTER_MODEL || 'deepseek/deepseek-chat';
 
+// 创建OpenAI客户端
 const client = new OpenAI({
   apiKey: API_KEY,
   baseURL: BASE_URL,
+  // 修复：使用英文作为标题值，避免中文字符
+  defaultHeaders: {
+    'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000',
+    'X-Title': 'Argument Winner' // 修改为英文标题
+  }
 });
 
 // 根据强度生成不同的提示词
@@ -88,36 +95,62 @@ export const streamResponses = async (
   onUpdate: (responses: string[]) => void
 ): Promise<void> => {
   try {
+    // 日志记录请求开始
+    console.log(`开始请求OpenRouter API，输入: "${opponentWords.substring(0, 30)}..."，强度: ${intensity}`);
+    
     const prompt = getPromptByIntensity(opponentWords, intensity);
     
-    const stream = await client.chat.completions.create({
-      model: MODEL,
-      messages: [
-        {
-          role: 'user',
-          content: prompt
+    // 尝试使用标准配置调用API
+    try {
+      const stream = await client.chat.completions.create({
+        model: MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+        stream: true,
+      });
+
+      let fullContent = '';
+      let currentResponses: string[] = [];
+      
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          fullContent += content;
+          currentResponses = parseResponses(fullContent);
+          onUpdate(currentResponses);
         }
-      ],
-      temperature: 0.7,
-      max_tokens: 500,
-      stream: true,
-    });
-
-    let fullContent = '';
-    let currentResponses: string[] = [];
-    
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content || '';
-      if (content) {
-        fullContent += content;
-        currentResponses = parseResponses(fullContent);
-        onUpdate(currentResponses);
       }
-    }
 
-    // 确保最后一次更新是完整的回复
-    const finalResponses = parseResponses(fullContent);
-    onUpdate(finalResponses);
+      // 确保最后一次更新是完整的回复
+      const finalResponses = parseResponses(fullContent);
+      onUpdate(finalResponses);
+      
+      // 记录成功
+      console.log(`请求成功完成，生成了 ${finalResponses.length} 条回复`);
+      
+    } catch (apiError) {
+      // API调用失败，尝试使用备用回复
+      console.error('API调用错误，使用备用回复:', apiError);
+      
+      // 生成备用回复
+      const fallbackResponses = [
+        `看来你对"${opponentWords.substring(0, 20)}..."的理解存在根本性误区，缺乏对基本事实的认知。`,
+        `你的观点经不起任何逻辑推敲，这种想法只会让人对你的判断力产生质疑。`,
+        `换个角度看，类似的论点早已被事实和数据驳倒过无数次，坚持这种错误只会令人尴尬。`
+      ];
+      
+      // 通知调用者使用备用回复
+      onUpdate(fallbackResponses);
+      
+      // 抛出错误以便上游处理
+      throw apiError;
+    }
     
   } catch (error) {
     console.error('API error:', error);
@@ -128,22 +161,39 @@ export const streamResponses = async (
 // 保留原有的非流式API以兼容旧代码
 export const generateResponses = async (opponentWords: string, intensity: number): Promise<string[]> => {
   try {
+    console.log(`开始非流式请求OpenRouter API，输入: "${opponentWords.substring(0, 30)}..."，强度: ${intensity}`);
+    
     const prompt = getPromptByIntensity(opponentWords, intensity);
     
-    const completion = await client.chat.completions.create({
-      model: MODEL,
-      messages: [
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 500,
-    });
+    try {
+      const completion = await client.chat.completions.create({
+        model: MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+      });
 
-    const content = completion.choices[0].message.content || '';
-    return parseResponses(content);
+      const content = completion.choices[0].message.content || '';
+      const responses = parseResponses(content);
+      
+      console.log(`非流式请求成功完成，生成了 ${responses.length} 条回复`);
+      return responses;
+      
+    } catch (apiError) {
+      console.error('非流式API调用错误，使用备用回复:', apiError);
+      
+      // 生成备用回复
+      return [
+        `看来你对"${opponentWords.substring(0, 20)}..."的理解存在根本性误区，缺乏对基本事实的认知。`,
+        `你的观点经不起任何逻辑推敲，这种想法只会让人对你的判断力产生质疑。`,
+        `换个角度看，类似的论点早已被事实和数据驳倒过无数次，坚持这种错误只会令人尴尬。`
+      ];
+    }
     
   } catch (error) {
     console.error('API error:', error);
