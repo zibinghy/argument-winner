@@ -21,26 +21,46 @@
 
 ## 本地开发
 
-1. 安装依赖：
+1. 克隆仓库并安装依赖：
 
 ```bash
+git clone <仓库地址>
+cd 吵架包赢
 npm install
 ```
 
-2. 启动开发服务器：
+2. 创建环境变量文件 `.env.local`：
+
+```
+OPENROUTER_API_KEY=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
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_MODEL=deepseek/deepseek-chat
+SITE_URL=http://localhost:3000
+```
+
+3. 启动开发服务器：
 
 ```bash
 npm run dev
 ```
 
-3. 打开浏览器访问：http://localhost:3000
+4. 打开浏览器访问：http://localhost:3000
 
-## 构建与部署
+## 部署到Vercel
 
-```bash
-npm run build
-npm start
-```
+1. 注册[Vercel](https://vercel.com)账号并安装[Vercel CLI](https://vercel.com/cli)
+
+2. 使用GitHub登录Vercel
+
+3. 在Vercel控制台中导入你的GitHub仓库
+
+4. 在部署设置中添加环境变量：
+   - `OPENROUTER_API_KEY` - OpenRouter API密钥
+   - `OPENROUTER_BASE_URL` - OpenRouter API地址
+   - `OPENROUTER_MODEL` - 使用的模型名称
+   - `SITE_URL` - 你的部署网站URL (例如: https://your-app.vercel.app)
+
+5. 点击部署按钮
 
 ## 使用指南
 
