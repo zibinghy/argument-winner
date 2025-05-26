@@ -5,15 +5,50 @@ const API_KEY = process.env.OPENROUTER_API_KEY || 'sk-or-v1-1f059c16b268778cb1a1
 const BASE_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
 const MODEL = process.env.OPENROUTER_MODEL || 'deepseek/deepseek-chat';
 
+// 调试输出API配置（不输出完整密钥）
+console.log(`使用API配置：BASE_URL=${BASE_URL}, MODEL=${MODEL}, API_KEY=${API_KEY.substring(0, 10)}...`);
+
 // 创建OpenAI客户端
 const client = new OpenAI({
   apiKey: API_KEY,
   baseURL: BASE_URL,
-  // 修复：使用英文作为标题值，避免中文字符
   defaultHeaders: {
     'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000',
-    'X-Title': 'Argument Winner' // 修改为英文标题
+    'X-Title': 'Argument Winner'
   }
+});
+
+// 测试发送一个简单的请求，检查认证是否正常
+async function testApiConnection() {
+  try {
+    // 直接创建请求而不依赖OpenAI库
+    const response = await fetch(`${BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`,
+        'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000',
+        'X-Title': 'Argument Winner'
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [{ role: 'user', content: 'Hello' }],
+        max_tokens: 5
+      })
+    });
+    
+    const data = await response.json();
+    console.log('API连接测试结果:', data.error ? `错误: ${data.error.message}` : '成功');
+    return !data.error;
+  } catch (error) {
+    console.error('API连接测试失败:', error);
+    return false;
+  }
+}
+
+// 尝试测试API连接
+testApiConnection().then(isSuccess => {
+  console.log(`API连接测试结果: ${isSuccess ? '成功' : '失败'}`);
 });
 
 // 根据强度生成不同的提示词
@@ -100,42 +135,48 @@ export const streamResponses = async (
     
     const prompt = getPromptByIntensity(opponentWords, intensity);
     
-    // 尝试使用标准配置调用API
+    // 尝试直接使用fetch API调用OpenRouter
     try {
-      const stream = await client.chat.completions.create({
-        model: MODEL,
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 500,
-        stream: true,
-      });
-
-      let fullContent = '';
-      let currentResponses: string[] = [];
+      console.log('使用直接fetch方式调用OpenRouter API');
       
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content || '';
-        if (content) {
-          fullContent += content;
-          currentResponses = parseResponses(fullContent);
-          onUpdate(currentResponses);
-        }
+      const response = await fetch(`${BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_KEY}`,
+          'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000',
+          'X-Title': 'Argument Winner'
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 500,
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`OpenRouter API错误 (${response.status}): ${errorData.error?.message || '未知错误'}`);
       }
-
-      // 确保最后一次更新是完整的回复
-      const finalResponses = parseResponses(fullContent);
+      
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content || '';
+      
+      // 解析回复并发送更新
+      const finalResponses = parseResponses(content);
       onUpdate(finalResponses);
       
       // 记录成功
       console.log(`请求成功完成，生成了 ${finalResponses.length} 条回复`);
       
     } catch (apiError) {
-      // API调用失败，尝试使用备用回复
+      // API调用失败，记录错误并使用备用回复
       console.error('API调用错误，使用备用回复:', apiError);
       
       // 生成备用回复
@@ -147,9 +188,6 @@ export const streamResponses = async (
       
       // 通知调用者使用备用回复
       onUpdate(fallbackResponses);
-      
-      // 抛出错误以便上游处理
-      throw apiError;
     }
     
   } catch (error) {
@@ -166,19 +204,36 @@ export const generateResponses = async (opponentWords: string, intensity: number
     const prompt = getPromptByIntensity(opponentWords, intensity);
     
     try {
-      const completion = await client.chat.completions.create({
-        model: MODEL,
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 500,
+      console.log('使用直接fetch方式调用OpenRouter API');
+      
+      const response = await fetch(`${BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_KEY}`,
+          'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000',
+          'X-Title': 'Argument Winner'
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 500,
+        })
       });
-
-      const content = completion.choices[0].message.content || '';
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`OpenRouter API错误 (${response.status}): ${errorData.error?.message || '未知错误'}`);
+      }
+      
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content || '';
       const responses = parseResponses(content);
       
       console.log(`非流式请求成功完成，生成了 ${responses.length} 条回复`);
