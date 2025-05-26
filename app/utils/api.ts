@@ -1,12 +1,12 @@
 import OpenAI from 'openai';
 
-// 从环境变量获取API密钥，如果不存在则使用默认值
-const API_KEY = process.env.OPENROUTER_API_KEY || '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';
+// 只从环境变量获取API密钥，不再提供默认值
+const API_KEY = process.env.OPENROUTER_API_KEY || '';
 const BASE_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
 const MODEL = process.env.OPENROUTER_MODEL || 'deepseek/deepseek-chat';
 
 // 调试输出API配置（不输出完整密钥）
-console.log(`使用API配置：BASE_URL=${BASE_URL}, MODEL=${MODEL}, API_KEY=${API_KEY.substring(0, 10)}...`);
+console.log(`使用API配置：BASE_URL=${BASE_URL}, MODEL=${MODEL}, API_KEY=${API_KEY.substring(0, 4)}...`);
 
 // 创建OpenAI客户端
 const client = new OpenAI({
