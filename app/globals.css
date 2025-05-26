@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 51, 51, 51;
+  --background-rgb: 237, 237, 237;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 微信风格的输入框 */
+.wechat-input {
+  @apply border border-gray-300 rounded-md p-3 w-full focus:outline-none focus:ring-2 focus:ring-wechat-green;
+}
+
+/* 微信风格的按钮 */
+.wechat-button {
+  @apply bg-wechat-green text-white font-medium py-2 px-4 rounded-md hover:opacity-90 transition-opacity;
+}
+
+/* 微信风格的滑块 */
+.wechat-slider {
+  @apply w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer;
+}
+
+.wechat-slider::-webkit-slider-thumb {
+  @apply appearance-none w-5 h-5 rounded-full bg-wechat-green cursor-pointer;
+}
+
+/* 微信风格的卡片 */
+.wechat-card {
+  @apply bg-white rounded-lg shadow-sm p-4 mb-4;
+}
+
+/* 微信风格的回复气泡 */
+.wechat-bubble {
+  @apply bg-wechat-green text-white p-3 rounded-lg rounded-tl-none mb-2 relative shadow-sm;
+  transform-origin: right bottom;
+}
+
+/* 优化后的打字机效果 */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.typing-effect {
+  position: relative;
+  width: fit-content !important;
+}
+
+.typing-cursor {
+  display: inline-block;
+  width: 3px;
+  height: 16px;
+  background-color: white;
+  margin-left: 2px;
+  vertical-align: middle;
+  animation: blink 1s step-end infinite;
+}
+
+/* 移除旧的打字机动画 */
+.typing-animation:after {
+  content: none !important;
+}
+
+/* 流动的加载动画 */
+@keyframes flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.flow-loading {
+  background: linear-gradient(90deg, rgba(7,193,96,0.3) 0%, rgba(7,193,96,0.9) 50%, rgba(7,193,96,0.3) 100%);
+  background-size: 200% 100%;
+  animation: flow 1.5s infinite;
+} 
